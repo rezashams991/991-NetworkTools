@@ -1,12 +1,12 @@
 /**
- * IP Info Tool - Using ip-api.com (CORS-enabled)
- * IMPORTANT: Do NOT add custom headers to the request
+ * IP Info Tool - Uses ipwho.is API.
+ * Free, HTTPS-supported, and natively allows CORS without proxies.
  */
 
 export default function run(container) {
   container.innerHTML = `
     <h3>📍 IP Info</h3>
-    <p>Get information about an IP address.</p>
+    <p>Get information about an IP address or your current IP.</p>
     <div class="converter-row">
       <input type="text" id="ip" placeholder="Enter IP or leave blank for your IP" style="width:300px;" />
       <button id="btn">Lookup</button>
@@ -20,30 +20,30 @@ export default function run(container) {
 
   async function lookup() {
     const ip = ipInput.value.trim();
-    // Use HTTPS to avoid mixed-content blocking
-    const url = ip ? `https://ip-api.com/json/${encodeURIComponent(ip)}` : 'https://ip-api.com/json/';
+    // ipwho.is supports both client IP (empty endpoint) and target IP endpoints over HTTPS
+    const url = ip ? `https://ipwho.is/${encodeURIComponent(ip)}` : 'https://ipwho.is/';
     
     result.textContent = '⏳ Looking up...';
     btn.disabled = true;
 
     try {
-      // ✅ DO NOT add custom headers - just a simple fetch
       const response = await fetch(url);
       const data = await response.json();
 
-      if (data.status === 'fail') {
-        throw new Error(data.message || 'IP not found');
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch IP details');
       }
 
       const info = [
-        `IP: ${data.query}`,
-        `Country: ${data.country} (${data.countryCode})`,
-        `Region: ${data.regionName}`,
+        `IP: ${data.ip}`,
+        `Type: ${data.type || 'N/A'}`,
+        `Country: ${data.country} (${data.country_code})`,
+        `Region: ${data.region}`,
         `City: ${data.city}`,
-        `ISP: ${data.isp}`,
-        `Organization: ${data.org}`,
-        `Timezone: ${data.timezone}`,
-        `Lat/Long: ${data.lat}, ${data.lon}`
+        `ISP: ${data.connection ? data.connection.isp : 'N/A'}`,
+        `ASN: ${data.connection ? data.connection.asn : 'N/A'}`,
+        `Timezone: ${data.timezone ? data.timezone.id : 'N/A'}`,
+        `Lat/Long: ${data.latitude}, ${data.longitude}`
       ].join('\n');
 
       result.textContent = `✅ ${info}`;

@@ -1,6 +1,6 @@
 /**
- * DNS Lookup Tool - Using Cloudflare DNS API (CORS-enabled)
- * Alternative to dns.google which has CORS issues
+ * DNS Lookup Tool - Uses Cloudflare DNS-over-HTTPS (DoH) API.
+ * Fully CORS-enabled and reliable directly from the browser.
  */
 
 export default function run(container) {
@@ -36,13 +36,18 @@ export default function run(container) {
     btn.disabled = true;
 
     try {
-      // Cloudflare DNS API (CORS-enabled)
+      // Fetch DNS record using Cloudflare DoH API JSON interface
       const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${type}`;
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/dns-json'
         }
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error Status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (!data.Answer || data.Answer.length === 0) {
@@ -51,9 +56,7 @@ export default function run(container) {
         return;
       }
 
-      const records = data.Answer.map(r => {
-        return `${r.name} → ${r.data}`;
-      }).join('\n');
+      const records = data.Answer.map(r => `${r.name} → ${r.data}`).join('\n');
 
       result.textContent = `✅ DNS ${type} records for ${domain}:\n${records}`;
       result.style.color = '#28a745';

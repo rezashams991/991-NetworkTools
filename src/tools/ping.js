@@ -1,12 +1,12 @@
 /**
- * Ping Tool - Simulates ping with multiple requests
- * Uses fetch to measure latency
+ * Ping Tool - Measures HTTP/HTTPS RTT latency directly from the client browser.
+ * Uses fetch with no-cors and cache busting to ensure accurate round-trip time.
  */
 
 export default function run(container) {
   container.innerHTML = `
-    <h3>📶 Ping</h3>
-    <p>Measure latency to a server.</p>
+    <h3>📶 Ping (HTTP Latency)</h3>
+    <p>Measure round-trip latency to a server directly from your browser.</p>
     <div class="converter-row">
       <input type="text" id="target" value="google.com" style="width:300px;" />
       <button id="btn">Ping</button>
@@ -38,7 +38,16 @@ export default function run(container) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        await fetch(target, { signal: controller.signal, mode: 'no-cors' });
+        // Add a timestamp parameter to prevent browser caching between packets
+        const separator = target.includes('?') ? '&' : '?';
+        const pingUrl = `${target}${separator}_cb=${Date.now()}_${i}`;
+
+        await fetch(pingUrl, { 
+          signal: controller.signal, 
+          mode: 'no-cors',
+          cache: 'no-store'
+        });
+
         clearTimeout(timeoutId);
         const latency = performance.now() - start;
         latencies.push(latency);
@@ -47,17 +56,17 @@ export default function run(container) {
         if (err.name === 'AbortError') {
           result.textContent = `📡 Packet ${i}/${packetCount}: Timeout`;
         } else {
-          result.textContent = `📡 Packet ${i}/${packetCount}: Error`;
+          result.textContent = `📡 Packet ${i}/${packetCount}: Error / Blocked`;
         }
       }
       await new Promise(r => setTimeout(r, 500));
     }
 
     if (latencies.length === 0) {
-      result.textContent = `❌ All packets lost. Server may be down or blocked.`;
+      result.textContent = `❌ All packets lost. Server may be down or blocking cross-origin requests.`;
       result.style.color = '#dc3545';
     } else {
-      const avg = latencies.reduce((a,b) => a+b, 0) / latencies.length;
+      const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
       const min = Math.min(...latencies);
       const max = Math.max(...latencies);
       const loss = ((packetCount - latencies.length) / packetCount * 100).toFixed(0);
